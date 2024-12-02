@@ -1,6 +1,11 @@
 from tkinter import *
+from tkinter import filedialog
 from tkinter.colorchooser import askcolor
-from PIL import ImageTk, Image
+from PIL import ImageTk
+from PIL import Image, ImageDraw
+
+# from PIL.ImageDraw import ImageDraw
+
 
 class Paint:
     DEFAULT_PEN_SIZE = 5.0
@@ -25,21 +30,11 @@ class Paint:
         self.undo_button = Button(self.top_row_frame, text="Undo", command=self.undo, bg='#4c4c4c', fg='white')
         self.undo_button.grid(row=0, column=1, padx=5)
 
-        # Redo button
-        self.redo_button = Button(self.top_row_frame, text="Redo", command=self.redo, bg='#4c4c4c', fg='white')
-        self.redo_button.grid(row=0, column=2, padx=5)
 
         # Clear button
         self.clear_button = Button(self.top_row_frame, text="Clear", command=self.clear_canvas, bg='#4c4c4c', fg='white')
         self.clear_button.grid(row=0, column=3, padx=5)
 
-        # Zoom In button
-        self.zoom_in_button = Button(self.top_row_frame, text="Zoom In", command=self.zoom_in, bg='#4c4c4c', fg='white')
-        self.zoom_in_button.grid(row=0, column=4, padx=5)
-
-        # Zoom Out button
-        self.zoom_out_button = Button(self.top_row_frame, text="Zoom Out", command=self.zoom_out, bg='#4c4c4c', fg='white')
-        self.zoom_out_button.grid(row=0, column=5, padx=5)
 
         # Pen size slider
         self.pen_size_slider = Scale(self.top_row_frame, from_=1, to=10, orient=HORIZONTAL)
@@ -70,23 +65,33 @@ class Paint:
         self.eraser_button = Button(self.paint_tools, text='Eraser', image=self.eraser_logo, borderwidth=2, command=self.use_eraser, bg='#4c4c4c', fg='white')
         self.eraser_button.place(x=10, y=130)
 
+        self.shape_button_line = Label(self.paint_tools, text="Shapes", bg='#4c4c4c', fg='white',
+                                 font=("Arial", 14, "bold"))
+        self.shape_button_line.place(x=8, y=163)  # Center title between buttons
+
         # Shape tool buttons
-        self.shape_button_line = Button(self.paint_tools, text="Line", command=self.activate_line, bg='#4c4c4c', fg='white', relief=RAISED)
-        self.shape_button_line.place(x=10, y=170)
+        self.shape_button_line_logo = ImageTk.PhotoImage(Image.open('line.png'))
+        self.shape_button_line = Button(self.paint_tools,image=self.shape_button_line_logo , text="Line", command=self.activate_line, bg='#4c4c4c', fg='white', relief=RAISED)
+        self.shape_button_line.place(x=10, y=195)
 
-        self.shape_button_rectangle = Button(self.paint_tools, text="Rectangle", command=self.activate_rectangle, bg='#4c4c4c', fg='white', relief=RAISED)
-        self.shape_button_rectangle.place(x=10, y=210)
+        self.shape_button_rectangle_logo = ImageTk.PhotoImage(Image.open('Rectangle.png'))
+        self.shape_button_rectangle = Button(self.paint_tools, image=self.shape_button_rectangle_logo, borderwidth=2, command=self.activate_rectangle, bg='#4c4c4c', fg='white', relief=RAISED)
+        self.shape_button_rectangle.place(x=10, y=230)
 
-        self.shape_button_circle = Button(self.paint_tools, text="Circle", command=self.activate_circle, bg='#4c4c4c', fg='white', relief=RAISED)
-        self.shape_button_circle.place(x=10, y=250)
+        self.shape_button_circle_logo = ImageTk.PhotoImage(Image.open('Circle.png'))
+        self.shape_button_circle = Button(self.paint_tools, image=self.shape_button_circle_logo, borderwidth=2, command=self.activate_circle, bg='#4c4c4c', fg='white', relief=RAISED)
+        self.shape_button_circle.place(x=10, y=265)
 
-        self.shape_button_square = Button(self.paint_tools, text="Square", command=self.activate_square, bg='#4c4c4c', fg='white', relief=RAISED)
-        self.shape_button_square.place(x=10, y=290)
+        self.shape_button_square_logo = ImageTk.PhotoImage(Image.open('Square.png'))
+        self.shape_button_square = Button(self.paint_tools, image=self.shape_button_square_logo, borderwidth=2, command=self.activate_square, bg='#4c4c4c', fg='white', relief=RAISED)
+        self.shape_button_square.place(x=10, y=300)
 
-        self.shape_button_triangle = Button(self.paint_tools, text="Triangle", command=self.activate_triangle, bg='#4c4c4c', fg='white', relief=RAISED)
-        self.shape_button_triangle.place(x=10, y=330)
+        self.shape_button_triangle_logo = ImageTk.PhotoImage(Image.open('Triangle.png'))
+        self.shape_button_triangle = Button(self.paint_tools, image=self.shape_button_triangle_logo, borderwidth=2, command=self.activate_triangle, bg='#4c4c4c', fg='white', relief=RAISED)
+        self.shape_button_triangle.place(x=10, y=335)
 
-        self.shape_button_diamond = Button(self.paint_tools, text="Diamond", command=self.activate_diamond, bg='#4c4c4c', fg='white', relief=RAISED)
+        self.shape_button_diamond_logo = ImageTk.PhotoImage(Image.open('Diamond.png'))
+        self.shape_button_diamond = Button(self.paint_tools, image=self.shape_button_diamond_logo, borderwidth=2, command=self.activate_diamond, bg='#4c4c4c', fg='white', relief=RAISED)
         self.shape_button_diamond.place(x=10, y=370)
 
         # Main drawing canvas
@@ -208,38 +213,51 @@ class Paint:
         self.line_width = self.pen_size_slider.get()
         paint_color = 'white' if self.eraser_on else self.color
 
-        if self.drawing_line or self.drawing_rectangle or self.drawing_circle or self.drawing_square or self.drawing_triangle or self.drawing_diamond:
+        if any([self.drawing_line, self.drawing_rectangle, self.drawing_circle,
+                self.drawing_square, self.drawing_triangle, self.drawing_diamond]):
             # Handle shapes
             if self.shape_preview:
                 self.c.delete(self.shape_preview)
             if self.drawing_line:
-                self.shape_preview = self.c.create_line(self.old_x, self.old_y, event.x, event.y, width=self.line_width,
-                                                        fill=paint_color)
+                self.shape_preview = self.c.create_line(
+                    self.old_x, self.old_y, event.x, event.y, width=self.line_width, fill=paint_color)
             elif self.drawing_rectangle:
-                self.shape_preview = self.c.create_rectangle(self.old_x, self.old_y, event.x, event.y,
-                                                             outline=paint_color, width=self.line_width)
+                self.shape_preview = self.c.create_rectangle(
+                    self.old_x, self.old_y, event.x, event.y, outline=paint_color, width=self.line_width)
             elif self.drawing_circle:
                 radius = max(abs(event.x - self.old_x), abs(event.y - self.old_y))
-                self.shape_preview = self.c.create_oval(self.old_x - radius, self.old_y - radius, self.old_x + radius,
-                                                        self.old_y + radius, outline=paint_color, width=self.line_width)
+                self.shape_preview = self.c.create_oval(
+                    self.old_x - radius, self.old_y - radius, self.old_x + radius, self.old_y + radius,
+                    outline=paint_color, width=self.line_width)
             elif self.drawing_square:
                 side = max(abs(event.x - self.old_x), abs(event.y - self.old_y))
-                self.shape_preview = self.c.create_rectangle(self.old_x, self.old_y, self.old_x + side,
-                                                             self.old_y + side, outline=paint_color,
-                                                             width=self.line_width)
+                self.shape_preview = self.c.create_rectangle(
+                    self.old_x, self.old_y, self.old_x + side, self.old_y + side, outline=paint_color,
+                    width=self.line_width)
             elif self.drawing_triangle:
-                points = [self.old_x, self.old_y, event.x, event.y, self.old_x + (event.x - self.old_x),
-                          self.old_y - (event.y - self.old_y)]
-                self.shape_preview = self.c.create_polygon(points, outline=paint_color, width=self.line_width)
+                base_mid_x = (self.old_x + event.x) // 2
+                points = [
+                    base_mid_x, self.old_y,  # Top vertex
+                    self.old_x, event.y,  # Bottom-left vertex
+                    event.x, event.y  # Bottom-right vertex
+                ]
+                self.shape_preview = self.c.create_polygon(points, outline=paint_color, fill="", width=self.line_width)
             elif self.drawing_diamond:
-                points = [self.old_x, self.old_y, event.x, event.y, self.old_x + (event.x - self.old_x),
-                          self.old_y - (event.y - self.old_y)]
-                self.shape_preview = self.c.create_polygon(points, outline=paint_color, width=self.line_width)
+                mid_x = (self.old_x + event.x) // 2
+                mid_y = (self.old_y + event.y) // 2
+                points = [
+                    mid_x, self.old_y,  # Top vertex
+                    event.x, mid_y,  # Right vertex
+                    mid_x, event.y,  # Bottom vertex
+                    self.old_x, mid_y  # Left vertex
+                ]
+                self.shape_preview = self.c.create_polygon(points, outline=paint_color, fill="", width=self.line_width)
         else:
-            # Handle free drawing for pen and brush
+            # Handle free drawing for pen, brush, or eraser
             if self.old_x and self.old_y:
-                self.actions.append(self.c.create_line(self.old_x, self.old_y, event.x, event.y, width=self.line_width,
-                                                       fill=paint_color, capstyle=ROUND, smooth=True))
+                self.actions.append(self.c.create_line(
+                    self.old_x, self.old_y, event.x, event.y,
+                    width=self.line_width, fill=paint_color, capstyle=ROUND, smooth=True))
             self.old_x = event.x
             self.old_y = event.y
 
@@ -261,23 +279,44 @@ class Paint:
             self.c.delete(last_action)
             self.redo_actions.append(last_action)
 
-    def redo(self):
-        if self.redo_actions:
-            action = self.redo_actions.pop()
-            self.actions.append(action)
-            self.c.addtag_withtag("all", action)  # Redraw the last undone action
-
     def save(self):
-        # Functionality for saving the drawing
-        pass
+        # Ask the user for a file name and location to save the file
+        file_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                 filetypes=[("PNG files", "*.png"),
+                                                            ("JPEG files", "*.jpg"),
+                                                            ("All files", "*.*")])
+        if file_path:
+            # Create a Pillow image with the size of the canvas
+            canvas_width = self.c.winfo_width()
+            canvas_height = self.c.winfo_height()
+            image = Image.new("RGB", (canvas_width, canvas_height), "white")
+            draw = ImageDraw.Draw(image)
 
-    def zoom_in(self):
-        # Zoom-in functionality
-        self.c.scale("all", 0, 0, 1.1, 1.1)
+            # Draw the canvas content onto the Pillow image
+            items = self.c.find_all()
+            for item in items:
+                coords = self.c.coords(item)
+                item_type = self.c.type(item)
+                color = self.c.itemcget(item, "fill") or "black"
 
-    def zoom_out(self):
-        # Zoom-out functionality
-        self.c.scale("all", 0, 0, 0.9, 0.9)
+                # Safely convert width to an integer
+                width_str = self.c.itemcget(item, "width")
+                try:
+                    width = int(float(width_str))  # Convert '5.0' -> 5
+                except ValueError:
+                    width = 1  # Default to 1 if width is invalid
+
+                if item_type == "line":
+                    draw.line(coords, fill=color, width=width)
+                elif item_type == "rectangle":
+                    draw.rectangle(coords, outline=color, width=width)
+                elif item_type == "oval":
+                    draw.ellipse(coords, outline=color, width=width)
+                elif item_type == "polygon":
+                    draw.polygon(coords, outline=color, width=width)
+
+            # Save the image
+            image.save(file_path)
 
 
 if __name__ == '__main__':
